@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoClick - Recycling Education Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            width: 400px;
+            height: 600px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .item {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+        }
+        .bin {
+            position: absolute;
+            bottom: 0;
+            width: 100px;
+            height: 100px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="score">Score: 0</div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const scoreElement = document.getElementById('score');
+        let score = 0;
+
+        const items = [
+            { type: 'paper', image: 'https://via.placeholder.com/50x50.png?text=📄' },
+            { type: 'plastic', image: 'https://via.placeholder.com/50x50.png?text=🍶' },
+            { type: 'organic', image: 'https://via.placeholder.com/50x50.png?text=🍎' },
+        ];
+
+        const bins = [
+            { type: 'paper', image: 'https://via.placeholder.com/100x100.png?text=Paper', x: 0 },
+            { type: 'plastic', image: 'https://via.placeholder.com/100x100.png?text=Plastic', x: 150 },
+            { type: 'organic', image: 'https://via.placeholder.com/100x100.png?text=Organic', x: 300 },
+        ];
+
+        function createBins() {
+            bins.forEach(bin => {
+                const binElement = document.createElement('div');
+                binElement.className = 'bin';
+                binElement.style.backgroundImage = `url(${bin.image})`;
+                binElement.style.left = `${bin.x}px`;
+                gameContainer.appendChild(binElement);
+            });
+        }
+
+        function createItem() {
+            const item = items[Math.floor(Math.random() * items.length)];
+            const itemElement = document.createElement('div');
+            itemElement.className = 'item';
+            itemElement.dataset.type = item.type;
+            itemElement.style.backgroundImage = `url(${item.image})`;
+            itemElement.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
+            itemElement.style.top = '-50px';
+            gameContainer.appendChild(itemElement);
+
+            itemElement.addEventListener('click', handleItemClick);
+
+            moveItem(itemElement);
+        }
+
+        function moveItem(itemElement) {
+            let posY = -50;
+            const interval = setInterval(() => {
+                posY += 2;
+                itemElement.style.top = `${posY}px`;
+
+                if (posY > gameContainer.offsetHeight) {
+                    clearInterval(interval);
+                    itemElement.remove();
+                }
+            }, 20);
+        }
+
+        function handleItemClick(event) {
+            const item = event.target;
+            const itemRect = item.getBoundingClientRect();
+            const itemCenterX = itemRect.left + itemRect.width / 2;
+
+            const correctBin = bins.find(bin => {
+                const binElement = document.querySelector(`.bin[style*="left: ${bin.x}px"]`);
+                const binRect = binElement.getBoundingClientRect();
+                return item.dataset.type === bin.type && 
+                       itemCenterX >= binRect.left && 
+                       itemCenterX <= binRect.right;
+            });
+
+            if (correctBin) {
+                score += 10;
+                scoreElement.textContent = `Score: ${score}`;
+                item.remove();
+            }
+        }
+
+        createBins();
+        setInterval(createItem, 2000);
+    </script>
+</body>
+</html>
