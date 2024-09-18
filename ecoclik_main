@@ -3,24 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoClick - Recycling Education Game</title>
+    <title>Enhanced EcoClick - Recycling Education Game</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #e8f5e9;
         }
         #game-container {
             width: 400px;
             height: 600px;
-            border: 2px solid #333;
+            border: 2px solid #2e7d32;
+            border-radius: 10px;
             position: relative;
             overflow: hidden;
             background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .item {
             position: absolute;
@@ -30,44 +32,102 @@
             background-repeat: no-repeat;
             background-position: center;
             cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .item:hover {
+            transform: scale(1.1);
         }
         .bin {
             position: absolute;
             bottom: 0;
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
         }
-        #score {
+        #score, #level {
             position: absolute;
             top: 10px;
-            left: 10px;
             font-size: 18px;
+            color: #2e7d32;
+        }
+        #score { left: 10px; }
+        #level { right: 10px; }
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255,255,255,0.9);
+            z-index: 10;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="score">Score: 0</div>
+        <div id="level">Level: 1</div>
+        <div id="start-screen">
+            <h1>EcoClick</h1>
+            <p>Sort the items into the correct bins!</p>
+            <button id="start-button">Start Game</button>
+        </div>
+        <div id="game-over-screen" style="display: none;">
+            <h1>Game Over</h1>
+            <p>Your final score: <span id="final-score"></span></p>
+            <button id="restart-button">Play Again</button>
+        </div>
     </div>
 
     <script>
         const gameContainer = document.getElementById('game-container');
         const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const finalScoreElement = document.getElementById('final-score');
+
         let score = 0;
+        let level = 1;
+        let gameInterval;
+        let missedItems = 0;
+        const maxMissedItems = 5;
 
         const items = [
             { type: 'paper', image: 'https://via.placeholder.com/50x50.png?text=📄' },
             { type: 'plastic', image: 'https://via.placeholder.com/50x50.png?text=🍶' },
             { type: 'organic', image: 'https://via.placeholder.com/50x50.png?text=🍎' },
+            { type: 'glass', image: 'https://via.placeholder.com/50x50.png?text=🍾' },
+            { type: 'metal', image: 'https://via.placeholder.com/50x50.png?text=🥫' }
         ];
 
         const bins = [
-            { type: 'paper', image: 'https://via.placeholder.com/100x100.png?text=Paper', x: 0 },
-            { type: 'plastic', image: 'https://via.placeholder.com/100x100.png?text=Plastic', x: 150 },
-            { type: 'organic', image: 'https://via.placeholder.com/100x100.png?text=Organic', x: 300 },
+            { type: 'paper', image: 'https://via.placeholder.com/80x80.png?text=Paper', x: 0 },
+            { type: 'plastic', image: 'https://via.placeholder.com/80x80.png?text=Plastic', x: 80 },
+            { type: 'organic', image: 'https://via.placeholder.com/80x80.png?text=Organic', x: 160 },
+            { type: 'glass', image: 'https://via.placeholder.com/80x80.png?text=Glass', x: 240 },
+            { type: 'metal', image: 'https://via.placeholder.com/80x80.png?text=Metal', x: 320 }
         ];
 
         function createBins() {
@@ -97,13 +157,19 @@
 
         function moveItem(itemElement) {
             let posY = -50;
+            const speed = 1 + (level * 0.5);
             const interval = setInterval(() => {
-                posY += 2;
+                posY += speed;
                 itemElement.style.top = `${posY}px`;
 
                 if (posY > gameContainer.offsetHeight) {
                     clearInterval(interval);
                     itemElement.remove();
+                    missedItems++;
+                    playSound('miss');
+                    if (missedItems >= maxMissedItems) {
+                        gameOver();
+                    }
                 }
             }, 20);
         }
@@ -122,14 +188,53 @@
             });
 
             if (correctBin) {
-                score += 10;
+                score += 10 * level;
                 scoreElement.textContent = `Score: ${score}`;
                 item.remove();
+                playSound('correct');
+                checkLevelUp();
+            } else {
+                playSound('wrong');
             }
         }
 
-        createBins();
-        setInterval(createItem, 2000);
+        function checkLevelUp() {
+            if (score >= level * 100) {
+                level++;
+                levelElement.textContent = `Level: ${level}`;
+                playSound('levelup');
+            }
+        }
+
+        function gameOver() {
+            clearInterval(gameInterval);
+            gameOverScreen.style.display = 'flex';
+            finalScoreElement.textContent = score;
+            playSound('gameover');
+        }
+
+        function startGame() {
+            score = 0;
+            level = 1;
+            missedItems = 0;
+            scoreElement.textContent = `Score: ${score}`;
+            levelElement.textContent = `Level: ${level}`;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameContainer.innerHTML = '';
+            gameContainer.appendChild(scoreElement);
+            gameContainer.appendChild(levelElement);
+            createBins();
+            gameInterval = setInterval(createItem, 2000);
+        }
+
+        function playSound(sound) {
+            // In a full implementation, you would create and play actual sound effects here
+            console.log(`Playing sound: ${sound}`);
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
     </script>
 </body>
 </html>
